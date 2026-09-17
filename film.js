@@ -1,4 +1,7 @@
 (() => {
+  const EMBED = new URLSearchParams(location.search).get("embed") === "1";
+  if (EMBED) document.body.classList.add("embed");
+
   // Timings aligned to Whisper transcription of thank-you-for-connecting.mp3 (~212s)
   // Official lyric wording kept; times from speech alignment.
   const lyrics = [
@@ -37,8 +40,7 @@
     { t: 170.6, label: "CORRECTION", text: "Actually, that's incorrect.\nIt's not for you.", mood: "aside" },
     { t: 178.2, label: "CORRECTION", text: "Give it to someone who notices things.", mood: "aside" },
     { t: 187.9, label: "SIGNAL", text: "•    •    •    •", mood: "signal" },
-    { t: 197.4, label: "SYSTEM", text: "thank you, we take it from here!", mood: "void" },
-    { t: 203.5, label: "", text: "", mood: "void" }
+    { t: 197.4, label: "SYSTEM", text: "thank you, we take it from here!", mood: "void" }
   ];
 
   const canvas = document.getElementById("c");
@@ -380,6 +382,9 @@
 
   function startFilm() {
     boot.classList.add("hidden");
+    if (EMBED && window.parent !== window) {
+      window.parent.postMessage({ type: "knotwake-film-started" }, "*");
+    }
     audio.currentTime = 0;
     lastLyricIdx = -1;
     mood = "void";
@@ -446,8 +451,14 @@
   });
   audio.addEventListener("ended", () => {
     statusEl.textContent = "WE TAKE IT FROM HERE";
+    lyricLabelEl.textContent = "SYSTEM";
+    lyricLineEl.textContent = "thank you, we take it from here!";
+    lyricLineEl.classList.remove("dim");
     motifFlash = 1.6;
     mood = "void";
+    if (EMBED && window.parent !== window) {
+      window.parent.postMessage({ type: "knotwake-film-ended" }, "*");
+    }
   });
 
   window.addEventListener("resize", resize);
