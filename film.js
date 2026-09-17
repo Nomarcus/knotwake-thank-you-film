@@ -60,6 +60,10 @@
   const btnRec = document.getElementById("btnRec");
   const stage = document.getElementById("stage");
 
+  // The start button itself is the browser-approved user gesture. Do not wait
+  // for canplaythrough on mobile Safari; audio.play() can begin loading on tap.
+  btnStart.disabled = false;
+
   let W = 0, H = 0, dpr = 1;
   let columns = [];
   let nodes = [];
