@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Knotwake — Thank You for Connecting</title>
+<style>
+  :root {
+    --bg: #020805;
+    --green: #39ff88;
+    --amber: #c8facc;
+    --glow: rgba(57, 255, 136, 0.35);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--bg);
+    color: var(--green);
+    font-family: "IBM Plex Mono", "SF Mono", Menlo, Consolas, monospace;
+    overflow: hidden;
+  }
+  #stage {
+    position: relative;
+    width: 100vw; height: 100vh;
+    background: radial-gradient(ellipse at center, #06140c 0%, #020805 70%);
+  }
+  canvas { display: block; width: 100%; height: 100%; }
+  #vignette {
+    pointer-events: none;
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.55) 100%),
+      repeating-linear-gradient(0deg, rgba(0,0,0,0.08) 0 1px, transparent 1px 3px);
+  }
+  #hud {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    justify-content: space-between;
+    padding: 1.25rem 1.5rem;
+    pointer-events: none;
+  }
+  #topbar, #bottombar {
+    display: flex; justify-content: space-between; align-items: center;
+    font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase;
+    color: rgba(57,255,136,0.55);
+  }
+  #lyricBox {
+    position: absolute;
+    left: 50%; top: 52%;
+    transform: translate(-50%, -50%);
+    width: min(920px, 92vw);
+    text-align: center;
+    pointer-events: none;
+  }
+  #lyricLabel {
+    font-size: 0.7rem;
+    letter-spacing: 0.28em;
+    color: rgba(57,255,136,0.45);
+    margin-bottom: 0.85rem;
+    min-height: 1em;
+  }
+  #lyricLine {
+    font-size: clamp(1.15rem, 3.2vw, 2rem);
+    line-height: 1.45;
+    color: var(--amber);
+    text-shadow: 0 0 18px var(--glow), 0 0 2px rgba(200,250,204,0.8);
+    white-space: pre-wrap;
+    min-height: 3.2em;
+    transition: opacity 0.35s ease, filter 0.35s ease;
+  }
+  #lyricLine.dim { opacity: 0.12; filter: blur(1px); }
+  #controls {
+    position: absolute;
+    left: 50%; bottom: 1.4rem;
+    transform: translateX(-50%);
+    display: flex; gap: 0.6rem; flex-wrap: wrap; justify-content: center;
+    pointer-events: auto; z-index: 5;
+  }
+  button {
+    appearance: none; border: 1px solid rgba(57,255,136,0.45);
+    background: rgba(2,8,5,0.75); color: var(--green);
+    font: inherit; font-size: 0.75rem; letter-spacing: 0.1em;
+    text-transform: uppercase; padding: 0.55rem 0.9rem; cursor: pointer;
+    border-radius: 2px;
+  }
+  button:hover { background: rgba(57,255,136,0.12); }
+  button.primary { border-color: var(--green); box-shadow: 0 0 12px var(--glow); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  #progress {
+    position: absolute; left: 0; right: 0; bottom: 0; height: 3px;
+    background: rgba(57,255,136,0.12);
+  }
+  #progress > span {
+    display: block; height: 100%; width: 0%;
+    background: linear-gradient(90deg, #1dff7a, #c8facc);
+    box-shadow: 0 0 8px var(--glow);
+  }
+  #boot {
+    position: absolute; inset: 0; display: grid; place-items: center;
+    background: rgba(2,8,5,0.92); z-index: 10; text-align: center; padding: 2rem;
+  }
+  #boot.hidden { display: none; }
+  #boot h1 {
+    font-size: clamp(1.2rem, 3vw, 1.8rem); font-weight: 500;
+    letter-spacing: 0.18em; margin-bottom: 0.75rem;
+  }
+  #boot p { color: rgba(57,255,136,0.65); max-width: 36rem; line-height: 1.5; font-size: 0.9rem; }
+  #boot .err { color: #ff8f8f; margin-top: 0.75rem; }
+  audio { display: none; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="c"></canvas>
+  <div id="vignette"></div>
+  <div id="hud">
+    <div id="topbar">
+      <span>KNOTWAKE // NETWORK FILM</span>
+      <span id="clock">00:00</span>
+    </div>
+    <div></div>
+    <div id="bottombar">
+      <span>THANK YOU FOR CONNECTING</span>
+      <span id="status">STANDBY</span>
+    </div>
+  </div>
+  <div id="lyricBox">
+    <div id="lyricLabel"></div>
+    <div id="lyricLine" class="dim"></div>
+  </div>
+  <div id="progress"><span id="bar"></span></div>
+  <div id="controls">
+    <button class="primary" id="btnPlay">Play film</button>
+    <button id="btnFs">Fullscreen</button>
+    <button id="btnRec">Record WebM</button>
+  </div>
+  <div id="boot">
+    <div>
+      <h1>THANK YOU FOR CONNECTING</h1>
+      <p>A Knotwake network film — Matrix reinvented as waking nodes and shared signals. Lyrics timed to your Suno track.</p>
+      <p id="bootMsg" style="margin-top:1rem">Loading audio…</p>
+      <p class="err" id="bootErr" hidden></p>
+      <div style="margin-top:1.25rem; pointer-events:auto">
+        <button class="primary" id="btnStart" disabled>Start</button>
+      </div>
+    </div>
+  </div>
+</div>
+<audio id="audio" preload="auto" src="thank-you-for-connecting.mp3"></audio>
+<script src="film.js"></script>
+</body>
+</html>
