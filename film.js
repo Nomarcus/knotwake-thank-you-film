@@ -436,13 +436,13 @@
   });
 
   audio.addEventListener("canplaythrough", () => {
-    bootMsg.textContent = "Audio ready.";
+    bootMsg.textContent = "";
     btnStart.disabled = false;
   });
   audio.addEventListener("error", () => {
     bootErr.hidden = false;
     bootErr.textContent = "Missing thank-you-for-connecting.mp3 next to this HTML file.";
-    bootMsg.textContent = "Waiting for audio file…";
+    bootMsg.textContent = "";
   });
   audio.addEventListener("ended", () => {
     statusEl.textContent = "WE TAKE IT FROM HERE";

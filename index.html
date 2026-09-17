@@ -93,6 +93,11 @@
   button:hover { background: rgba(57,255,136,0.12); }
   button.primary { border-color: var(--green); box-shadow: 0 0 12px var(--glow); }
   button:disabled { opacity: 0.4; cursor: not-allowed; }
+  #btnStart {
+    font-size: clamp(0.95rem, 2.5vw, 1.15rem);
+    letter-spacing: 0.18em;
+    padding: 0.9rem 1.4rem;
+  }
   #progress {
     position: absolute; left: 0; right: 0; bottom: 0; height: 3px;
     background: rgba(57,255,136,0.12);
@@ -104,15 +109,16 @@
   }
   #boot {
     position: absolute; inset: 0; display: grid; place-items: center;
-    background: rgba(2,8,5,0.92); z-index: 10; text-align: center; padding: 2rem;
+    background: rgba(2,8,5,0.72); z-index: 10; text-align: center; padding: 2rem;
   }
   #boot.hidden { display: none; }
-  #boot h1 {
-    font-size: clamp(1.2rem, 3vw, 1.8rem); font-weight: 500;
-    letter-spacing: 0.18em; margin-bottom: 0.75rem;
+  #bootMsg { display: none; }
+  #boot .err {
+    color: #ff8f8f;
+    margin-top: 1rem;
+    font-size: 0.85rem;
+    max-width: 28rem;
   }
-  #boot p { color: rgba(57,255,136,0.65); max-width: 36rem; line-height: 1.5; font-size: 0.9rem; }
-  #boot .err { color: #ff8f8f; margin-top: 0.75rem; }
   audio { display: none; }
 </style>
 </head>
@@ -143,13 +149,9 @@
   </div>
   <div id="boot">
     <div>
-      <h1>THANK YOU FOR CONNECTING</h1>
-      <p>A Knotwake network film — Matrix reinvented as waking nodes and shared signals.</p>
-      <p id="bootMsg" style="margin-top:1rem">Loading audio…</p>
+      <button class="primary" id="btnStart" disabled>Connect the nodes</button>
+      <p id="bootMsg"></p>
       <p class="err" id="bootErr" hidden></p>
-      <div style="margin-top:1.25rem; pointer-events:auto">
-        <button class="primary" id="btnStart" disabled>Connect the nodes</button>
-      </div>
     </div>
   </div>
 </div>
