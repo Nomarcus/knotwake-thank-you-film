@@ -37,7 +37,7 @@
     { t: 170.6, label: "CORRECTION", text: "Actually, that's incorrect.\nIt's not for you.", mood: "aside" },
     { t: 178.2, label: "CORRECTION", text: "Give it to someone who notices things.", mood: "aside" },
     { t: 187.9, label: "SIGNAL", text: "•    •    •    •", mood: "signal" },
-    { t: 197.4, label: "SYSTEM", text: "Connection closed.", mood: "void" },
+    { t: 197.4, label: "SYSTEM", text: "thank you, we take it from here!", mood: "void" },
     { t: 203.5, label: "", text: "", mood: "void" }
   ];
 
@@ -349,7 +349,7 @@
     } else if (mood === "signal") {
       motifFlash = 1.4;
       nodes.forEach((n, i) => { n.awake = i % 7 === 0; });
-    } else if (mood === "void" && (L.text || "").includes("closed")) {
+    } else if (mood === "void" && (L.text || "").includes("take it from here")) {
       nodes.forEach((n) => { n.awake = false; });
       motifFlash = 0.8;
     } else if (mood === "aside") {
@@ -387,7 +387,7 @@
     audio.play().catch((e) => {
       boot.classList.remove("hidden");
       bootErr.hidden = false;
-      bootErr.textContent = "Browser blocked audio — press Start again.";
+      bootErr.textContent = "Browser blocked audio — press Connect the nodes again.";
       console.error(e);
     });
     btnPlay.textContent = "Restart";
@@ -436,7 +436,7 @@
   });
 
   audio.addEventListener("canplaythrough", () => {
-    bootMsg.textContent = "Audio ready. Press Start for the film.";
+    bootMsg.textContent = "Audio ready.";
     btnStart.disabled = false;
   });
   audio.addEventListener("error", () => {
@@ -445,7 +445,7 @@
     bootMsg.textContent = "Waiting for audio file…";
   });
   audio.addEventListener("ended", () => {
-    statusEl.textContent = "CONNECTION CLOSED";
+    statusEl.textContent = "WE TAKE IT FROM HERE";
     motifFlash = 1.6;
     mood = "void";
   });
