@@ -4,12 +4,125 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Knotwake day 20</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap">
 <style>
-html,body{margin:0;background:#020805;color:#c8facc;font-family:ui-monospace,monospace}
-video{width:100%;height:100vh;background:#000}
+html, body {
+  margin: 0;
+  height: 100%;
+  background: #020805;
+  color: #39ff88;
+  font-family: "IBM Plex Mono", ui-monospace, monospace;
+}
+body {
+  display: flex;
+  flex-direction: column;
+  min-height: 100vh;
+  min-height: 100dvh;
+}
+video {
+  flex: 1;
+  width: 100%;
+  min-height: 0;
+  background: #000;
+  object-fit: contain;
+}
+.bar {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  box-sizing: border-box;
+  width: 100%;
+  padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
+  background: #020805;
+  border-top: 1px solid rgba(57, 255, 136, 0.35);
+}
+button {
+  flex: 0 0 auto;
+  min-width: 88px;
+  min-height: 48px;
+  padding: 0 14px;
+  border: 1px solid #39ff88;
+  background: #020805;
+  color: #39ff88;
+  font: 500 15px/1 "IBM Plex Mono", ui-monospace, monospace;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+}
+button:active { background: #39ff88; color: #020805; }
+input[type="range"] {
+  flex: 1 1 auto;
+  width: 100%;
+  min-width: 0;
+  height: 48px;
+  margin: 0;
+  accent-color: #39ff88;
+  background: transparent;
+  cursor: pointer;
+  touch-action: pan-y;
+}
 </style>
 </head>
 <body>
-<video src="day-20-v11.mp4" controls playsinline autoplay></video>
+<video id="film" src="day-20-v11.mp4" playsinline autoplay></video>
+<div class="bar">
+  <button id="play" type="button">Pause</button>
+  <button id="restart" type="button">Restart</button>
+  <input id="scrub" type="range" min="0" max="1" step="0.01" value="0" aria-label="Scrub the film">
+</div>
+<script>
+(function () {
+  var video = document.getElementById("film");
+  var play = document.getElementById("play");
+  var restart = document.getElementById("restart");
+  var scrub = document.getElementById("scrub");
+  var dragging = false;
+
+  function label() {
+    play.textContent = video.paused ? "Play" : "Pause";
+  }
+
+  function sync() {
+    if (dragging || !isFinite(video.duration) || video.duration <= 0) return;
+    scrub.max = String(video.duration);
+    scrub.value = String(video.currentTime);
+  }
+
+  play.addEventListener("click", function () {
+    if (video.paused) video.play();
+    else video.pause();
+  });
+
+  restart.addEventListener("click", function () {
+    video.currentTime = 0;
+    scrub.value = "0";
+    video.play();
+  });
+
+  scrub.addEventListener("pointerdown", function () { dragging = true; });
+  scrub.addEventListener("pointerup", function () { dragging = false; });
+  scrub.addEventListener("pointercancel", function () { dragging = false; });
+  scrub.addEventListener("input", function () {
+    var t = Number(scrub.value);
+    if (isFinite(t)) video.currentTime = t;
+  });
+  scrub.addEventListener("change", function () { dragging = false; sync(); });
+
+  video.addEventListener("play", label);
+  video.addEventListener("pause", label);
+  video.addEventListener("loadedmetadata", function () {
+    scrub.max = String(video.duration);
+    sync();
+  });
+  video.addEventListener("timeupdate", sync);
+  video.addEventListener("ended", function () {
+    play.textContent = "Play";
+  });
+
+  label();
+})();
+</script>
 </body>
 </html>
