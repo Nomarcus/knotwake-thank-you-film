@@ -1,0 +1,228 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<meta name="theme-color" content="#020805" />
+<title>Knotwake — The Line Still Holds (preview)</title>
+<!--
+  Review cut for Saturday 3 Oct 2026. Not the live ending.
+  Audio file combined-v1-TEMP-audio.mp3 is a temporary instrumental.
+  A fresh Suno track replaces it before the Monday 5 Oct publish.
+  Caption times live in combined-v1.js and should be retimed with that track.
+  Do not use the phrase YOU BUILT IT.
+-->
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&display=swap" />
+<style>
+  :root {
+    --bg: #020805;
+    --green: #39ff88;
+    --amber: #c8facc;
+    --glow: rgba(57, 255, 136, 0.35);
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  html, body {
+    width: 100%; height: 100%;
+    background: var(--bg);
+    color: var(--green);
+    font-family: "IBM Plex Mono", "SF Mono", Menlo, Consolas, monospace;
+    overflow: hidden;
+  }
+  #stage {
+    position: relative;
+    width: 100vw; height: 100vh;
+    background: radial-gradient(ellipse at center, #06140c 0%, #020805 70%);
+  }
+  canvas { display: block; width: 100%; height: 100%; }
+  #vignette {
+    pointer-events: none;
+    position: absolute; inset: 0;
+    background:
+      radial-gradient(ellipse at center, transparent 40%, rgba(0,0,0,0.55) 100%),
+      repeating-linear-gradient(0deg, rgba(0,0,0,0.08) 0 1px, transparent 1px 3px);
+  }
+  #hud {
+    position: absolute; inset: 0;
+    display: flex; flex-direction: column;
+    justify-content: space-between;
+    padding: 1.25rem 1.5rem 9rem;
+    pointer-events: none;
+  }
+  #topbar, #bottombar {
+    display: flex; justify-content: space-between; align-items: center;
+    gap: 1rem;
+    font-size: 0.72rem; letter-spacing: 0.12em; text-transform: uppercase;
+    color: rgba(57,255,136,0.55);
+  }
+  #lyricBox {
+    position: absolute;
+    left: 50%; top: 42%;
+    transform: translate(-50%, -50%);
+    width: min(920px, 92vw);
+    text-align: center;
+    pointer-events: none;
+  }
+  #lyricLabel {
+    font-size: 0.7rem;
+    letter-spacing: 0.28em;
+    color: rgba(57,255,136,0.45);
+    margin-bottom: 0.85rem;
+    min-height: 1em;
+  }
+  #lyricLine {
+    font-size: clamp(1.15rem, 3.2vw, 2rem);
+    line-height: 1.45;
+    color: var(--amber);
+    text-shadow: 0 0 18px var(--glow), 0 0 2px rgba(200,250,204,0.8);
+    white-space: pre-wrap;
+    min-height: 3.2em;
+    transition: opacity 0.35s ease, filter 0.35s ease;
+  }
+  #lyricLine.dim { opacity: 0.12; filter: blur(1px); }
+  #lyricLine.pop {
+    animation: lyricIn 0.55s cubic-bezier(0.2, 0.8, 0.2, 1);
+  }
+  @keyframes lyricIn {
+    from { opacity: 0; transform: translateY(10px); filter: blur(4px); letter-spacing: 0.08em; }
+    to { opacity: 1; transform: translateY(0); filter: none; letter-spacing: normal; }
+  }
+  #controls {
+    position: absolute;
+    left: 50%;
+    bottom: calc(0.75rem + env(safe-area-inset-bottom));
+    transform: translateX(-50%);
+    width: min(760px, 94vw);
+    display: flex; flex-direction: column; gap: 0.45rem;
+    align-items: stretch;
+    pointer-events: auto; z-index: 5;
+  }
+  #buttons {
+    display: flex; gap: 0.5rem; flex-wrap: wrap; justify-content: center;
+  }
+  button {
+    appearance: none; border: 1px solid rgba(57,255,136,0.45);
+    background: rgba(2,8,5,0.75); color: var(--green);
+    font: inherit; font-size: 0.75rem; letter-spacing: 0.1em;
+    text-transform: uppercase; padding: 0.55rem 0.9rem;
+    min-height: 44px;
+    cursor: pointer;
+    border-radius: 2px;
+  }
+  button:hover { background: rgba(57,255,136,0.12); }
+  button:focus-visible, input:focus-visible {
+    outline: 2px solid var(--green);
+    outline-offset: 2px;
+  }
+  button.primary { border-color: var(--green); box-shadow: 0 0 12px var(--glow); }
+  button:disabled { opacity: 0.4; cursor: not-allowed; }
+  #btnStart {
+    font-size: clamp(0.95rem, 2.5vw, 1.15rem);
+    letter-spacing: 0.18em;
+    padding: 0.9rem 1.4rem;
+  }
+  #scrubRow {
+    display: flex; align-items: center; gap: 0.65rem;
+  }
+  #scrubNow, #scrubDur {
+    flex: 0 0 auto;
+    font-size: 0.72rem;
+    letter-spacing: 0.08em;
+    color: rgba(57,255,136,0.72);
+    min-width: 5ch;
+  }
+  #scrubDur { text-align: right; }
+  input[type="range"] {
+    flex: 1 1 auto;
+    width: 100%;
+    min-width: 0;
+    height: 36px;
+    margin: 0;
+    accent-color: #39ff88;
+    background: transparent;
+    cursor: pointer;
+  }
+  #audioNote {
+    text-align: center;
+    font-size: 0.62rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: rgba(57,255,136,0.38);
+  }
+  #boot {
+    position: absolute; inset: 0; display: grid; place-items: center;
+    background: rgba(2,8,5,0.72); z-index: 10; text-align: center; padding: 2rem;
+  }
+  #boot.hidden { display: none; }
+  #bootKicker {
+    font-size: 0.72rem;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: rgba(57,255,136,0.55);
+    margin-bottom: 1rem;
+  }
+  #bootNote {
+    margin-top: 0.9rem;
+    max-width: 26rem;
+    font-size: 0.75rem;
+    line-height: 1.45;
+    letter-spacing: 0.04em;
+    color: rgba(57,255,136,0.48);
+  }
+  #boot .err {
+    color: #ff8f8f;
+    margin-top: 1rem;
+    font-size: 0.85rem;
+    max-width: 28rem;
+  }
+  audio { display: none; }
+  body.embed #boot { background: var(--bg); }
+  body.embed #controls { display: none; }
+  body.embed #hud { padding-bottom: 1.25rem; }
+</style>
+</head>
+<body>
+<div id="stage">
+  <canvas id="c"></canvas>
+  <div id="vignette"></div>
+  <div id="hud">
+    <div id="topbar">
+      <span>KNOTWAKE // COMBINED PREVIEW</span>
+      <span id="clock">00:00</span>
+    </div>
+    <div></div>
+    <div id="bottombar">
+      <span>THE LINE STILL HOLDS</span>
+      <span id="status">STANDBY</span>
+    </div>
+  </div>
+  <div id="lyricBox">
+    <div id="lyricLabel"></div>
+    <div id="lyricLine" class="dim" aria-live="polite"></div>
+  </div>
+  <div id="controls">
+    <div id="buttons">
+      <button type="button" id="btnPlay">Play</button>
+      <button type="button" id="btnRestart">Restart</button>
+      <button type="button" id="btnFs">Fullscreen</button>
+      <button type="button" id="btnRec">Record WebM</button>
+    </div>
+    <div id="scrubRow">
+      <span id="scrubNow">00:00</span>
+      <input id="scrub" type="range" min="0" max="196" step="0.01" value="0" aria-label="Scrub the film">
+      <span id="scrubDur">03:16</span>
+    </div>
+    <p id="audioNote">Temporary score · Suno track before Monday</p>
+  </div>
+  <div id="boot">
+    <div>
+      <p id="bootKicker">Knotwake · combined preview</p>
+      <button class="primary" type="button" id="btnStart">Start</button>
+      <p id="bootNote">Temporary score. A Suno track replaces it before Monday.</p>
+      <p class="err" id="bootErr" hidden></p>
+    </div>
+  </div>
+</div>
+<audio id="audio" preload="auto" src="combined-v1-TEMP-audio.mp3"></audio>
+<script src="combined-v1.js"></script>
+</body>
+</html>
