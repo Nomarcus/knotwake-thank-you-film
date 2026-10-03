@@ -4,6 +4,7 @@
   // Replace that file with the Monday Suno track and retune `beats`.
   // Do not use the phrase "YOU BUILT IT".
   const TEMP_DURATION = 196;
+  const AUDIO_FILE = "combined-v1-TEMP-audio.mp3";
   const LINE_N = 12;
 
   const EMBED = new URLSearchParams(location.search).get("embed") === "1";
@@ -77,6 +78,9 @@
   let recorder = null;
   let recordedChunks = [];
   let lastTs = performance.now();
+  let pendingStart = null;
+  let seekPending = false;
+  let desiredTime = null;
 
   const glyphs = "01アイウエオカキクケコサシスセソタチツテトABCDEFGHKLMNPRSTVWXYZ░▒▓¤※◆◇∙".split("");
 
@@ -189,7 +193,7 @@
     rings.push({ x, y, r: 4, life: 0, max: 1.1 });
   }
 
-  function draw(dt, time) {
+  function draw(dt, uiDt, time) {
     const pal = moodPalette[mood] || moodPalette.void;
     const dur = duration();
     const progress = dur ? Math.min(1, Math.max(0, time / dur)) : 0;
@@ -246,7 +250,7 @@
     }
 
     pulses = pulses.filter((p) => {
-      p.life += dt;
+      p.life += uiDt;
       const k = p.life / p.max;
       if (k >= 1) return false;
       const x = p.x + (p.tx - p.x) * k;
@@ -265,19 +269,19 @@
     });
 
     sparks = sparks.filter((s) => {
-      s.life += dt;
+      s.life += uiDt;
       const k = s.life / s.max;
       if (k >= 1) return false;
-      s.x += s.vx * dt;
-      s.y += s.vy * dt;
-      s.vy += 30 * dt;
+      s.x += s.vx * uiDt;
+      s.y += s.vy * uiDt;
+      s.vy += 30 * uiDt;
       ctx.fillStyle = `rgba(200,255,210,${1 - k})`;
       ctx.fillRect(s.x, s.y, 2, 2);
       return true;
     });
 
     rings = rings.filter((r) => {
-      r.life += dt;
+      r.life += uiDt;
       const k = r.life / r.max;
       if (k >= 1) return false;
       ctx.beginPath();
@@ -290,14 +294,25 @@
 
     const exact = lp * (LINE_N - 1);
     const frontier = Math.max(0, Math.min(LINE_N - 1, Math.floor(exact + 0.001)));
-    ctx.lineWidth = 1.25;
+    ctx.lineCap = "round";
+    ctx.lineWidth = 5;
+    ctx.strokeStyle = "rgba(2,8,5,0.72)";
+    ctx.beginPath();
+    for (let i = 0; i < LINE_N - 1; i++) {
+      const a = linePoint(i, time);
+      const b = linePoint(i + 1, time);
+      if (i === 0) ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+    }
+    ctx.stroke();
     for (let i = 0; i < LINE_N - 1; i++) {
       const a = linePoint(i, time);
       const b = linePoint(i + 1, time);
       ctx.beginPath();
       ctx.moveTo(a.x, a.y);
       ctx.lineTo(b.x, b.y);
-      ctx.strokeStyle = i < frontier ? "rgba(57,255,136,0.72)" : "rgba(57,255,136,0.14)";
+      ctx.lineWidth = i < frontier ? 2 : 1.4;
+      ctx.strokeStyle = i < frontier ? "rgba(210,255,224,0.92)" : "rgba(57,255,136,0.42)";
       ctx.stroke();
     }
     for (let i = 0; i < LINE_N; i++) {
@@ -305,18 +320,23 @@
       const on = i <= frontier && lp > 0;
       const head = i === frontier && lp > 0;
       ctx.beginPath();
-      ctx.arc(p.x, p.y, head ? 5.5 : on ? 3.4 : 2.1, 0, Math.PI * 2);
+      ctx.arc(p.x, p.y, head ? 11 : 8, 0, Math.PI * 2);
+      ctx.fillStyle = "rgba(2,8,5,0.72)";
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, head ? 6.2 : on ? 4.2 : 3.3, 0, Math.PI * 2);
       ctx.fillStyle = head
-        ? "rgba(230,255,236,0.98)"
+        ? "rgba(236,255,244,0.98)"
         : on
-          ? "rgba(57,255,136,0.92)"
-          : "rgba(57,255,136,0.2)";
+          ? "rgba(57,255,136,0.96)"
+          : "rgba(57,255,136,0.62)";
       ctx.fill();
       if (head) {
-        const halo = 11 + Math.sin(time * 2.2) * 2;
+        const halo = 14 + Math.sin(time * 2.2) * 2;
         ctx.beginPath();
         ctx.arc(p.x, p.y, halo, 0, Math.PI * 2);
-        ctx.strokeStyle = "rgba(200,255,220,0.4)";
+        ctx.strokeStyle = "rgba(200,255,220,0.55)";
+        ctx.lineWidth = 1.4;
         ctx.stroke();
       }
     }
@@ -332,13 +352,13 @@
       ctx.fill();
     }
 
-    if (motifFlash > 0) {
-      motifFlash = Math.max(0, motifFlash - dt);
+    if (motifFlash > 0) motifFlash = Math.max(0, motifFlash - uiDt);
+    if (motifFlash > 0 || mood === "signal") {
       const cx = W / 2;
       const cy = H * 0.16;
       for (let i = 0; i < 4; i++) {
         const x = cx + (i - 1.5) * 52;
-        const on = motifFlash > (3 - i) * 0.09;
+        const on = mood === "signal" || motifFlash > (3 - i) * 0.09;
         ctx.beginPath();
         ctx.arc(x, cy, on ? 7 : 3.5, 0, Math.PI * 2);
         ctx.fillStyle = on ? "rgba(210,255,220,0.98)" : "rgba(57,255,136,0.22)";
@@ -417,7 +437,7 @@
     clockEl.textContent = fmt(time);
     scrubNow.textContent = fmt(time);
     scrubDur.textContent = fmt(dur);
-    if (!dragging) {
+    if (!dragging && !seekPending) {
       scrub.max = String(dur);
       scrub.value = String(Math.min(dur, Math.max(0, time)));
     }
@@ -433,7 +453,8 @@
     lastTs = ts;
     const time = audio.currentTime || 0;
     const playing = started && !audio.paused && !audio.ended;
-    const frontier = draw(playing ? dt : 0, time);
+    const wallDt = dt;
+    const frontier = draw(playing ? wallDt : 0, wallDt, time);
 
     if (playing && frontier === lastFrontier + 1) {
       const p = linePoint(frontier, time);
@@ -458,25 +479,35 @@
     bootErr.textContent = message;
   }
 
-  function beginPlayback(fromStart) {
-    started = true;
-    boot.classList.add("hidden");
-    if (fromStart) {
-      lastBeatIdx = -1;
-      lastFrontier = -1;
-      mood = "void";
-      pulses = [];
-      sparks = [];
-      rings = [];
-      motifFlash = 0;
-      try { audio.currentTime = 0; } catch (e) { /* metadata may still be loading */ }
-    }
+  function resetPlayhead() {
+    lastBeatIdx = -1;
+    lastFrontier = -1;
+    mood = "void";
+    pulses = [];
+    sparks = [];
+    rings = [];
+    motifFlash = 0;
+    seekTo(0);
+  }
+
+  function actuallyStart(fromStart) {
+    if (fromStart) resetPlayhead();
     if (EMBED && window.parent !== window) {
       window.parent.postMessage({ type: "knotwake-film-started" }, "*");
     }
     audio.play().catch(() => {
       showAudioError("Browser blocked audio. Press Start again.");
     });
+  }
+
+  function beginPlayback(fromStart) {
+    started = true;
+    boot.classList.add("hidden");
+    if (!audio.src) {
+      pendingStart = fromStart;
+      return;
+    }
+    actuallyStart(fromStart);
   }
 
   function togglePlay() {
@@ -488,6 +519,12 @@
     else audio.pause();
   }
 
+  function applySeek() {
+    if (!seekPending || desiredTime == null || !audio.src) return;
+    try { audio.currentTime = desiredTime; } catch (e) { return; }
+    if (Math.abs((audio.currentTime || 0) - desiredTime) < 0.45) seekPending = false;
+  }
+
   function seekTo(next) {
     const dur = duration();
     const time = Math.max(0, Math.min(dur, next));
@@ -495,7 +532,9 @@
       started = true;
       boot.classList.add("hidden");
     }
-    try { audio.currentTime = time; } catch (e) { /* ignore until metadata is ready */ }
+    desiredTime = time;
+    seekPending = true;
+    applySeek();
   }
 
   btnStart.addEventListener("click", () => beginPlayback(true));
@@ -522,16 +561,14 @@
 
   window.addEventListener("keydown", (e) => {
     const tag = e.target && e.target.tagName;
-    if (tag === "INPUT" || tag === "BUTTON" || tag === "TEXTAREA") return;
     if (e.code === "Space") {
+      if (tag === "INPUT" || tag === "BUTTON" || tag === "TEXTAREA") return;
       e.preventDefault();
       togglePlay();
-    } else if (e.code === "ArrowRight") {
+    } else if (e.code === "ArrowRight" || e.code === "ArrowLeft") {
+      if (tag === "INPUT") return;
       e.preventDefault();
-      seekTo((audio.currentTime || 0) + 5);
-    } else if (e.code === "ArrowLeft") {
-      e.preventDefault();
-      seekTo((audio.currentTime || 0) - 5);
+      seekTo((audio.currentTime || 0) + (e.code === "ArrowRight" ? 5 : -5));
     }
   });
 
@@ -584,11 +621,49 @@
     }
   }
 
-  audio.addEventListener("loadedmetadata", syncDuration);
+  audio.addEventListener("loadedmetadata", () => {
+    syncDuration();
+    applySeek();
+  });
   audio.addEventListener("durationchange", syncDuration);
+  audio.addEventListener("canplay", applySeek);
+  audio.addEventListener("seeked", () => {
+    if (desiredTime == null || Math.abs((audio.currentTime || 0) - desiredTime) < 0.5) {
+      seekPending = false;
+    } else {
+      applySeek();
+    }
+  });
   audio.addEventListener("error", () => {
+    if (!audio.src) return;
     showAudioError("Missing combined-v1-TEMP-audio.mp3 next to this file.");
   });
+
+  // Blob URL so scrub works even when the static server has no byte ranges.
+  // file:// falls back to the mp3 path, which local players can seek.
+  function prepareAudio() {
+    fetch(AUDIO_FILE).then((res) => {
+      if (!res.ok) throw new Error(String(res.status));
+      return res.blob();
+    }).then((blob) => {
+      audio.src = URL.createObjectURL(blob);
+      if (pendingStart !== null) {
+        const reset = pendingStart;
+        pendingStart = null;
+        actuallyStart(reset);
+      } else {
+        applySeek();
+      }
+    }).catch(() => {
+      audio.src = AUDIO_FILE;
+      if (pendingStart !== null) {
+        const reset = pendingStart;
+        pendingStart = null;
+        actuallyStart(reset);
+      }
+    });
+  }
+  prepareAudio();
   audio.addEventListener("ended", () => {
     statusEl.textContent = "THE LINE HOLDS";
     btnPlay.textContent = "Play";
